@@ -138,14 +138,7 @@ a criação do `.exe`.
 - **Fora do escopo atual:** refresh automático de token, janela de detalhes/gráficos,
   histórico, alertas de limite, suporte a GLM/OpenRouter/DeepSeek, múltiplas
   contas e instalador.
-
----
-
-## 🤝 Contribuindo
-
-Issues e PRs são bem-vindos. Abra uma issue descrevendo o problema ou a ideia
-antes de enviar mudanças maiores.
-
+  
 ---
 
 ## 📄 Licença
