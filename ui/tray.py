@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from PyQt6.QtCore import QThreadPool
 from PyQt6.QtGui import QAction, QIcon
-from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
+from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QWidgetAction
 
 from core import config
 from core.credentials import read_claude_credentials, read_codex_credentials
@@ -27,7 +27,8 @@ from core.providers.claude_provider import ClaudeUsageProvider
 from core.providers.codex_provider import CodexUsageProvider
 from core.refresh_scheduler import RefreshScheduler
 from core.usage_worker import UsageFetchTask
-from ui.formatters import format_tooltip, format_usage_line
+from ui.formatters import format_tooltip
+from ui.usage_menu_item import UsageMenuItemWidget
 
 
 class SystemTray(QSystemTrayIcon):
@@ -66,9 +67,14 @@ class SystemTray(QSystemTrayIcon):
     def _build_menu(self) -> None:
         menu = QMenu()
 
-        self._action_claude = QAction("Claude: ...", menu)
+        self._widget_claude = UsageMenuItemWidget(config.PROVIDER_CLAUDE, menu)
+        self._action_claude = QWidgetAction(menu)
+        self._action_claude.setDefaultWidget(self._widget_claude)
         self._action_claude.setEnabled(False)
-        self._action_codex = QAction("Codex: ...", menu)
+
+        self._widget_codex = UsageMenuItemWidget(config.PROVIDER_CODEX, menu)
+        self._action_codex = QWidgetAction(menu)
+        self._action_codex.setDefaultWidget(self._widget_codex)
         self._action_codex.setEnabled(False)
 
         self._action_refresh = QAction("Atualizar agora", menu)
@@ -118,9 +124,9 @@ class SystemTray(QSystemTrayIcon):
         claude = by_provider.get(config.PROVIDER_CLAUDE)
         codex = by_provider.get(config.PROVIDER_CODEX)
         if claude is not None:
-            self._action_claude.setText(format_usage_line(claude))
+            self._widget_claude.update_from_snapshot(claude)
         if codex is not None:
-            self._action_codex.setText(format_usage_line(codex))
+            self._widget_codex.update_from_snapshot(codex)
 
     # --- cache ------------------------------------------------------------
     def _with_cache(self, snapshot: UsageSnapshot) -> UsageSnapshot:

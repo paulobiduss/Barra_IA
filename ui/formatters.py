@@ -78,6 +78,12 @@ def format_usage_line(snapshot: UsageSnapshot) -> str:
     return f"{snapshot.provider}: {detail}"
 
 
+# Aliases publicos para reuso pelo widget grafico do menu (ui/usage_menu_item.py).
+# Mantemos os nomes privados em uso interno e nos testes existentes.
+fmt_number = _fmt_number
+fmt_reset = _fmt_reset
+
+
 def format_tooltip(snapshots: list[UsageSnapshot]) -> str:
     """Tooltip multilinha com o titulo do app e uma linha por provider."""
     lines = ["Barra de Uso de IA"]
