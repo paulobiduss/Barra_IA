@@ -1,14 +1,71 @@
+# ============================================================
 # Python
+# ============================================================
 __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# PyInstaller
+# ============================================================
+# PyInstaller / build
+# ============================================================
 build/
 dist/
 *.spec
+*.exe
+*.zip
 
-# Ambiente
+# ============================================================
+# Ambiente virtual
+# ============================================================
 .venv/
 venv/
+env/
+
+# ============================================================
+# Segredos / credenciais - NUNCA versionar
+# ------------------------------------------------------------
+# O app le tokens OAuth de %USERPROFILE%\.claude e %USERPROFILE%\.codex
+# (fora do repo). Estas regras sao uma defesa extra contra commit acidental
+# caso algum arquivo sensivel seja copiado para a arvore do projeto.
+# ============================================================
+.env
+.env.*
+!.env.example
+*.credentials.json
+auth.json
+*.pem
+*.key
+*.pfx
+secrets.*
+*token*.json
+
+# ============================================================
+# IDE / editores
+# ============================================================
+.vscode/
+.idea/
+*.swp
+*~
+
+# ============================================================
+# Sistema operacional
+# ============================================================
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ============================================================
+# Fluxo de revisao por IA - MANTIDO LOCAL (fora do repo publico)
+# ------------------------------------------------------------
+# Estes arquivos ficam no disco para uso local, mas nao sao versionados
+# nem publicados.
+# ============================================================
+.ai/
+.claude/
+AGENTS.md
+CLAUDE.md
+scripts/
+docs/ai-local-workflow.md

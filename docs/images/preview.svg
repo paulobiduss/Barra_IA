@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="220" viewBox="0 0 320 220" font-family="Segoe UI, Arial, sans-serif">
+  <!-- Ilustracao do menu de contexto da bandeja (preview, nao e uma captura real) -->
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <rect width="320" height="220" fill="#0d1117"/>
+
+  <!-- Janela do menu -->
+  <rect x="20" y="18" width="280" height="184" rx="10" fill="#1e1e1e" stroke="#3a3a3a" stroke-width="1" filter="url(#shadow)"/>
+
+  <!-- Titulo -->
+  <text x="36" y="42" fill="#c9d1d9" font-size="12" font-weight="700">Barra de Uso de IA</text>
+  <line x1="32" y1="52" x2="288" y2="52" stroke="#333" stroke-width="1"/>
+
+  <!-- Item Claude (82% -> laranja #FB8500) -->
+  <text x="36" y="74" fill="#f0f0f0" font-size="13" font-weight="700">Claude</text>
+  <text x="36" y="90" fill="#9aa0a6" font-size="11">410/500 · 82% · reset em 25min</text>
+  <rect x="36" y="98" width="248" height="6" rx="3" fill="#2D2D30"/>
+  <rect x="36" y="98" width="203" height="6" rx="3" fill="#FB8500"/>
+
+  <!-- Item Codex (18% -> verde #3FB950) -->
+  <text x="36" y="126" fill="#f0f0f0" font-size="13" font-weight="700">Codex</text>
+  <text x="36" y="142" fill="#9aa0a6" font-size="11">9/50 · 18% · reset em 1h</text>
+  <rect x="36" y="150" width="248" height="6" rx="3" fill="#2D2D30"/>
+  <rect x="36" y="150" width="45" height="6" rx="3" fill="#3FB950"/>
+
+  <line x1="32" y1="170" x2="288" y2="170" stroke="#333" stroke-width="1"/>
+
+  <!-- Acoes -->
+  <text x="36" y="188" fill="#c9d1d9" font-size="12">Atualizar agora</text>
+</svg>
