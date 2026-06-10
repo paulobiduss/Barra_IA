@@ -19,6 +19,18 @@ def _fmt_number(value: float) -> str:
     return f"{value:.1f}"
 
 
+def _fmt_bar(percent: float, width: int = 5) -> str:
+    """Barra visual de consumo em blocos Unicode (ex.: '[#####.....]').
+
+    Usa blocos cheios/vazios para representar o percentual; clampa em [0,100]
+    para suportar provedores que ocasionalmente devolvem valores fora do
+    intervalo (ex.: estouro momentaneo de cota).
+    """
+    pct = max(0.0, min(100.0, float(percent)))
+    filled = int(round(pct / 100.0 * width))
+    return "[" + ("█" * filled) + ("░" * (width - filled)) + "]"
+
+
 def _fmt_reset(reset_at: datetime) -> str:
     """Tempo restante ate o reset, em formato curto (ex.: 'reset em 3h')."""
     now = datetime.now(tz=reset_at.tzinfo or timezone.utc)
@@ -43,6 +55,8 @@ def format_usage_line(snapshot: UsageSnapshot) -> str:
         return f"{snapshot.provider}: {snapshot.message or snapshot.state.value}"
 
     parts: list[str] = []
+    if snapshot.percent is not None:
+        parts.append(_fmt_bar(snapshot.percent))
     if snapshot.used is not None and snapshot.limit is not None:
         parts.append(f"{_fmt_number(snapshot.used)}/{_fmt_number(snapshot.limit)}")
     elif snapshot.used is not None:
