@@ -3,26 +3,63 @@ claude_provider.py - Uso do Claude via endpoint OAuth (nao documentado).
 
 GET https://api.anthropic.com/api/oauth/usage  (Authorization: Bearer <token>)
 
-O schema real deve ser validado empiricamente; por isso o parser tolera
-multiplos nomes de campo e nunca quebra a UI.
+Schema real (validado empiricamente em 2026-06-10): nao ha valores absolutos
+de "used"/"limit", apenas percentuais por janela:
+
+    {
+      "five_hour": {"utilization": 65.0, "resets_at": "2026-06-10T16:50:00Z"},
+      "seven_day": {"utilization": 7.0, "resets_at": "2026-06-12T15:00:00Z"},
+      ...
+    }
+
+`five_hour` (janela curta) vira o percentual/reset principal; `seven_day`
+(janela semanal) vira uma nota informativa.
 """
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from core import config
 from core.models import UsageSnapshot, UsageState
-from core.providers.base import build_snapshot, http_get_json
+from core.providers.base import coerce_datetime, first_number, http_get_json
+
+
+def _parse_error() -> UsageSnapshot:
+    return UsageSnapshot(
+        provider=config.PROVIDER_CLAUDE,
+        state=UsageState.PARSE_ERROR,
+        message="formato de resposta inesperado",
+        fetched_at=datetime.now(tz=timezone.utc),
+    )
 
 
 def parse_claude_usage(data: dict) -> UsageSnapshot:
     """Converte o payload do endpoint em UsageSnapshot, de forma tolerante."""
-    return build_snapshot(
-        config.PROVIDER_CLAUDE,
-        data,
-        used_keys=("used", "used_credits", "usage", "amount_used"),
-        limit_keys=("limit", "total", "credit_limit", "quota"),
-        percent_keys=("percent", "percentage", "utilization", "used_percent"),
-        reset_keys=("reset_at", "resets_at", "reset", "renews_at", "period_end"),
+    five_hour = data.get("five_hour")
+    if not isinstance(five_hour, dict):
+        return _parse_error()
+
+    percent = first_number(five_hour, ("utilization",))
+    if percent is None:
+        return _parse_error()
+
+    reset_at = coerce_datetime(five_hour.get("resets_at"))
+
+    message = None
+    seven_day = data.get("seven_day")
+    if isinstance(seven_day, dict):
+        seven_day_percent = first_number(seven_day, ("utilization",))
+        if seven_day_percent is not None:
+            message = f"(semana: {seven_day_percent:g}%)"
+
+    return UsageSnapshot(
+        provider=config.PROVIDER_CLAUDE,
+        state=UsageState.OK,
+        percent=percent,
+        reset_at=reset_at,
+        message=message,
+        fetched_at=datetime.now(tz=timezone.utc),
     )
 
 

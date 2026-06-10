@@ -14,49 +14,71 @@ from core.providers.codex_provider import parse_codex_usage
 
 
 class ParseClaudeUsageTests(unittest.TestCase):
-    def test_used_and_limit(self):
-        snap = parse_claude_usage({"used": 120, "limit": 500})
+    def test_five_hour_utilization(self):
+        snap = parse_claude_usage(
+            {"five_hour": {"utilization": 65.0, "resets_at": "2026-06-10T16:50:00+00:00"}}
+        )
         self.assertEqual(snap.state, UsageState.OK)
-        self.assertEqual(snap.used, 120.0)
-        self.assertEqual(snap.limit, 500.0)
-        self.assertEqual(snap.percent, 24.0)  # derivado
+        self.assertEqual(snap.percent, 65.0)
+        self.assertIsNotNone(snap.reset_at)
 
-    def test_explicit_percent_wins(self):
-        snap = parse_claude_usage({"used": 1, "limit": 4, "percent": 30})
-        self.assertEqual(snap.percent, 30.0)
-
-    def test_alternate_field_names(self):
-        snap = parse_claude_usage({"usage": 10, "quota": 100})
-        self.assertEqual(snap.used, 10.0)
-        self.assertEqual(snap.limit, 100.0)
+    def test_seven_day_becomes_message(self):
+        snap = parse_claude_usage(
+            {
+                "five_hour": {"utilization": 65.0, "resets_at": "2026-06-10T16:50:00+00:00"},
+                "seven_day": {"utilization": 7.0, "resets_at": "2026-06-12T15:00:00+00:00"},
+            }
+        )
+        self.assertEqual(snap.message, "(semana: 7%)")
 
     def test_unexpected_payload_is_parse_error(self):
         snap = parse_claude_usage({"unrelated": "data"})
         self.assertEqual(snap.state, UsageState.PARSE_ERROR)
         self.assertIsNotNone(snap.message)
 
-    def test_reset_at_epoch(self):
-        snap = parse_claude_usage({"used": 1, "limit": 2, "reset_at": 1893456000})
-        self.assertIsNotNone(snap.reset_at)
+    def test_missing_utilization_is_parse_error(self):
+        snap = parse_claude_usage({"five_hour": {"resets_at": "2026-06-10T16:50:00+00:00"}})
+        self.assertEqual(snap.state, UsageState.PARSE_ERROR)
+
+    def test_bool_is_not_number(self):
+        snap = parse_claude_usage({"five_hour": {"utilization": True}})
+        self.assertEqual(snap.state, UsageState.PARSE_ERROR)
 
 
 class ParseCodexUsageTests(unittest.TestCase):
-    def test_used_tokens_and_hard_limit(self):
-        snap = parse_codex_usage({"used_tokens": 200, "hard_limit": 1000})
+    def test_primary_window_used_percent(self):
+        snap = parse_codex_usage(
+            {"rate_limit": {"primary_window": {"used_percent": 12, "reset_at": 1781113799}}}
+        )
         self.assertEqual(snap.state, UsageState.OK)
-        self.assertEqual(snap.used, 200.0)
-        self.assertEqual(snap.limit, 1000.0)
-        self.assertEqual(snap.percent, 20.0)
+        self.assertEqual(snap.percent, 12.0)
+        self.assertIsNotNone(snap.reset_at)
+
+    def test_secondary_window_becomes_message(self):
+        snap = parse_codex_usage(
+            {
+                "rate_limit": {
+                    "primary_window": {"used_percent": 12, "reset_at": 1781113799},
+                    "secondary_window": {"used_percent": 2, "reset_at": 1781264790},
+                }
+            }
+        )
+        self.assertEqual(snap.message, "(semana: 2%)")
 
     def test_unexpected_payload_is_parse_error(self):
         snap = parse_codex_usage({})
         self.assertEqual(snap.state, UsageState.PARSE_ERROR)
 
+    def test_missing_used_percent_is_parse_error(self):
+        snap = parse_codex_usage({"rate_limit": {"primary_window": {"reset_at": 1781113799}}})
+        self.assertEqual(snap.state, UsageState.PARSE_ERROR)
+
     def test_bool_is_not_number(self):
         # Garante que True/False nao sejam confundidos com numeros.
-        snap = parse_codex_usage({"used": True, "limit": 100})
-        self.assertIsNone(snap.used)
-        self.assertEqual(snap.limit, 100.0)
+        snap = parse_codex_usage(
+            {"rate_limit": {"primary_window": {"used_percent": True}}}
+        )
+        self.assertEqual(snap.state, UsageState.PARSE_ERROR)
 
 
 if __name__ == "__main__":

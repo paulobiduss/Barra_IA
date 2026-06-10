@@ -3,26 +3,69 @@ codex_provider.py - Uso do Codex via endpoint backend (nao documentado).
 
 GET https://chatgpt.com/backend-api/wham/usage  (Authorization: Bearer <token>)
 
-O schema real deve ser validado empiricamente; o parser tolera multiplos nomes
-de campo e nunca quebra a UI.
+Schema real (validado empiricamente em 2026-06-10): nao ha valores absolutos
+de "used"/"limit", apenas percentuais por janela em `rate_limit`:
+
+    {
+      "rate_limit": {
+        "primary_window": {"used_percent": 12, "reset_at": 1781113799, ...},
+        "secondary_window": {"used_percent": 2, "reset_at": 1781264790, ...}
+      },
+      ...
+    }
+
+`primary_window` (janela curta, ~5h) vira o percentual/reset principal;
+`secondary_window` (janela semanal) vira uma nota informativa.
 """
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from core import config
 from core.models import UsageSnapshot, UsageState
-from core.providers.base import build_snapshot, http_get_json
+from core.providers.base import coerce_datetime, first_number, http_get_json
+
+
+def _parse_error() -> UsageSnapshot:
+    return UsageSnapshot(
+        provider=config.PROVIDER_CODEX,
+        state=UsageState.PARSE_ERROR,
+        message="formato de resposta inesperado",
+        fetched_at=datetime.now(tz=timezone.utc),
+    )
 
 
 def parse_codex_usage(data: dict) -> UsageSnapshot:
     """Converte o payload do endpoint em UsageSnapshot, de forma tolerante."""
-    return build_snapshot(
-        config.PROVIDER_CODEX,
-        data,
-        used_keys=("used", "used_tokens", "usage", "amount_used"),
-        limit_keys=("limit", "total", "hard_limit", "quota"),
-        percent_keys=("percent", "percentage", "utilization", "used_percent"),
-        reset_keys=("reset_at", "resets_at", "reset", "renews_at", "period_end"),
+    rate_limit = data.get("rate_limit")
+    if not isinstance(rate_limit, dict):
+        return _parse_error()
+
+    primary = rate_limit.get("primary_window")
+    if not isinstance(primary, dict):
+        return _parse_error()
+
+    percent = first_number(primary, ("used_percent",))
+    if percent is None:
+        return _parse_error()
+
+    reset_at = coerce_datetime(primary.get("reset_at"))
+
+    message = None
+    secondary = rate_limit.get("secondary_window")
+    if isinstance(secondary, dict):
+        secondary_percent = first_number(secondary, ("used_percent",))
+        if secondary_percent is not None:
+            message = f"(semana: {secondary_percent:g}%)"
+
+    return UsageSnapshot(
+        provider=config.PROVIDER_CODEX,
+        state=UsageState.OK,
+        percent=percent,
+        reset_at=reset_at,
+        message=message,
+        fetched_at=datetime.now(tz=timezone.utc),
     )
 
 
