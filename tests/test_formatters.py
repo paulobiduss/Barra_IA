@@ -18,8 +18,8 @@ def _ok(**kw) -> UsageSnapshot:
 class FormatUsageLineTests(unittest.TestCase):
     def test_used_limit_percent(self):
         line = format_usage_line(_ok(used=120, limit=500, percent=24))
-        # 24% em barra de 5 = 1 bloco cheio.
-        self.assertEqual(line, "Claude: [█░░░░] 120/500 (24%)")
+        # 24% em barra de 5 = 1 traco cheio.
+        self.assertEqual(line, "Claude: [━────] 120/500 (24%)")
 
     def test_reset_in_hours(self):
         reset = datetime.now(tz=timezone.utc) + timedelta(hours=3, minutes=5)
@@ -46,23 +46,23 @@ class FormatUsageLineTests(unittest.TestCase):
 
 class FormatBarTests(unittest.TestCase):
     def test_zero_percent_all_empty(self):
-        self.assertEqual(_fmt_bar(0), "[░░░░░]")
+        self.assertEqual(_fmt_bar(0), "[─────]")
 
     def test_full_percent_all_filled(self):
-        self.assertEqual(_fmt_bar(100), "[█████]")
+        self.assertEqual(_fmt_bar(100), "[━━━━━]")
 
     def test_half_percent(self):
-        # 50% em barra de 5 = 2.5 blocos; banker's rounding do Python arredonda 2.5 -> 2.
-        self.assertEqual(_fmt_bar(50), "[██░░░]")
+        # 50% em barra de 5 = 2.5 segmentos; banker's rounding do Python arredonda 2.5 -> 2.
+        self.assertEqual(_fmt_bar(50), "[━━───]")
 
     def test_clamps_above_100(self):
-        self.assertEqual(_fmt_bar(150), "[█████]")
+        self.assertEqual(_fmt_bar(150), "[━━━━━]")
 
     def test_clamps_below_zero(self):
-        self.assertEqual(_fmt_bar(-10), "[░░░░░]")
+        self.assertEqual(_fmt_bar(-10), "[─────]")
 
     def test_custom_width(self):
-        self.assertEqual(_fmt_bar(50, width=4), "[██░░]")
+        self.assertEqual(_fmt_bar(50, width=4), "[━━──]")
 
 
 class FormatTooltipTests(unittest.TestCase):

@@ -28,7 +28,7 @@ def _fmt_bar(percent: float, width: int = 5) -> str:
     """
     pct = max(0.0, min(100.0, float(percent)))
     filled = int(round(pct / 100.0 * width))
-    return "[" + ("█" * filled) + ("░" * (width - filled)) + "]"
+    return "[" + ("━" * filled) + ("─" * (width - filled)) + "]"
 
 
 def _fmt_reset(reset_at: datetime) -> str:
