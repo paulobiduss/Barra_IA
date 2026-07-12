@@ -13,6 +13,8 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
+from unittest import mock
 
 from core.credentials import read_claude_credentials, read_codex_credentials
 from core.models import AuthState
@@ -81,6 +83,66 @@ class ReadClaudeCredentialsTests(CredentialsTestBase):
         )
         result = read_claude_credentials(path)
         self.assertEqual(result.state, AuthState.READY)
+
+
+class ClaudeKeychainFallbackTests(CredentialsTestBase):
+    """Fallback macOS: arquivo ausente -> le do Keychain (read-only).
+
+    subprocess.run e sys.platform sao sempre mockados; nenhum acesso real ao
+    Keychain acontece, entao os testes rodam identico em qualquer plataforma.
+    """
+
+    def _run_ok(self, stdout: str):
+        return SimpleNamespace(returncode=0, stdout=stdout, stderr="")
+
+    def _run_fail(self):
+        return SimpleNamespace(returncode=44, stdout="", stderr="not found")
+
+    def test_darwin_keychain_returns_ready(self):
+        payload = json.dumps({"claudeAiOauth": {"accessToken": "kc-token"}})
+        with mock.patch("core.credentials.sys.platform", "darwin"), mock.patch(
+            "core.credentials.subprocess.run", return_value=self._run_ok(payload)
+        ) as run:
+            result = read_claude_credentials(self.tmp / "nope.json")
+        self.assertEqual(result.state, AuthState.READY)
+        self.assertEqual(result.token, "kc-token")
+        # Confirma leitura read-only via `security find-generic-password`.
+        args = run.call_args.args[0]
+        self.assertEqual(args[:2], ["security", "find-generic-password"])
+
+    def test_darwin_keychain_not_found_is_missing(self):
+        with mock.patch("core.credentials.sys.platform", "darwin"), mock.patch(
+            "core.credentials.subprocess.run", return_value=self._run_fail()
+        ):
+            result = read_claude_credentials(self.tmp / "nope.json")
+        self.assertEqual(result.state, AuthState.MISSING)
+        self.assertIsNone(result.token)
+
+    def test_darwin_keychain_invalid_json_is_missing(self):
+        with mock.patch("core.credentials.sys.platform", "darwin"), mock.patch(
+            "core.credentials.subprocess.run",
+            return_value=self._run_ok("not-json"),
+        ):
+            result = read_claude_credentials(self.tmp / "nope.json")
+        self.assertEqual(result.state, AuthState.MISSING)
+
+    def test_non_darwin_skips_keychain(self):
+        with mock.patch("core.credentials.sys.platform", "win32"), mock.patch(
+            "core.credentials.subprocess.run"
+        ) as run:
+            result = read_claude_credentials(self.tmp / "nope.json")
+        self.assertEqual(result.state, AuthState.MISSING)
+        run.assert_not_called()
+
+    def test_file_present_does_not_touch_keychain(self):
+        path = self._write("c.json", json.dumps({"access_token": "from-file"}))
+        with mock.patch("core.credentials.sys.platform", "darwin"), mock.patch(
+            "core.credentials.subprocess.run"
+        ) as run:
+            result = read_claude_credentials(path)
+        self.assertEqual(result.state, AuthState.READY)
+        self.assertEqual(result.token, "from-file")
+        run.assert_not_called()
 
 
 class ReadCodexCredentialsTests(CredentialsTestBase):

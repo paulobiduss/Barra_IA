@@ -16,6 +16,8 @@ dist/
 *.spec
 *.exe
 *.zip
+# Icone .icns gerado pelo build.sh a partir de assets/icon.png (macOS).
+assets/icon.icns
 
 # ============================================================
 # Ambiente virtual

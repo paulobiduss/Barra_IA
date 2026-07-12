@@ -4,9 +4,9 @@
 
 # Barra de Uso de IA
 
-**App de bandeja (system tray) para Windows que mostra, em tempo quase real, quanto você já consumiu das suas cotas de Claude e Codex.**
+**App de bandeja / barra de menu que mostra, em tempo quase real, quanto você já consumiu das suas cotas de Claude e Codex.**
 
-![Plataforma](https://img.shields.io/badge/plataforma-Windows-0078D6)
+![Plataforma](https://img.shields.io/badge/plataforma-Windows%20%7C%20macOS-0078D6)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![PyQt6](https://img.shields.io/badge/UI-PyQt6-41CD52)
 ![Licença](https://img.shields.io/badge/licen%C3%A7a-MIT-green)
@@ -68,8 +68,12 @@ sem sair do fluxo de trabalho.
 
 1. **Credenciais** — o app lê (somente leitura) os tokens OAuth gravados pelos
    próprios CLIs:
-   - Claude: `%USERPROFILE%\.claude\.credentials.json`
-   - Codex: `%USERPROFILE%\.codex\auth.json`
+   - Claude: `~/.claude/.credentials.json` — no **macOS**, se o arquivo não
+     existir, cai automaticamente para o **Keychain** (serviço
+     `Claude Code-credentials`), também em modo somente leitura.
+   - Codex: `~/.codex/auth.json`
+
+   No Windows, `~` corresponde a `%USERPROFILE%`; no macOS/Linux, ao seu home.
 2. **Consulta de uso** — usa o token como `Bearer` para consultar os endpoints de
    uso de cada provider (em *worker* assíncrono, para não travar a UI).
 3. **Apresentação** — converte a resposta em uma barra colorida + texto, no tooltip
@@ -83,15 +87,18 @@ ou `codex login`.
 
 ## 🚀 Como rodar (desenvolvimento)
 
-Requer **Python 3.11+** no Windows.
+Requer **Python 3.11+**.
 
-```bat
+```bash
 python -m pip install -r requirements.txt
 python main.py
 ```
 
-O ícone aparece na bandeja. Clique com o botão direito para ver o menu com o uso
-de cada provider.
+- **Windows:** o ícone aparece na bandeja. Clique com o botão direito para ver o
+  menu com o uso de cada provider.
+- **macOS:** o ícone aparece na **barra de menu** (canto superior direito).
+  Em modo desenvolvimento (`python main.py`) pode aparecer também um ícone no
+  Dock; o app empacotado (`.app`, abaixo) roda como agente e **não** mostra Dock.
 
 ---
 
@@ -106,7 +113,9 @@ Nenhum token real é usado — apenas *fixtures* fake em diretórios temporário
 
 ---
 
-## 📦 Build do executável (.exe)
+## 📦 Build do app
+
+### Windows — executável `.exe`
 
 ```bat
 build.bat
@@ -115,6 +124,28 @@ build.bat
 Gera um pacote portátil via PyInstaller. A saída final fica **fora** da pasta do
 Google Drive (em `C:\tmp\BarraUsoIA_*`), porque a pasta sincronizada pode bloquear
 a criação do `.exe`.
+
+### macOS — app `.app`
+
+Instalação em um comando (cria venv, instala dependências, gera e instala o app
+em `/Applications`):
+
+```bash
+bash install-mac.sh
+```
+
+Ou só gerar o `.app` (fica em `dist/BarraUsoIA.app`):
+
+```bash
+bash build.sh
+```
+
+O `build.sh` usa PyInstaller (`--windowed`) e marca o app como agente da barra de
+menu (`LSUIElement`), então ele roda **sem ícone no Dock**. Se não houver
+`assets/icon.icns`, o script o gera a partir de `assets/icon.png` com `sips`/`iconutil`.
+
+Depois de instalar: `open -a "BarraUsoIA"` (ou abra pelo Finder). O ícone aparece
+na barra de menu.
 
 ---
 

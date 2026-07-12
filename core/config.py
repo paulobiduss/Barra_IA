@@ -11,11 +11,17 @@ import os
 from pathlib import Path
 
 # --- Caminhos das credenciais locais -------------------------------------
-# Equivalentes Windows de ~/.claude/.credentials.json e ~/.codex/auth.json.
+# Multiplataforma: `~` resolve para %USERPROFILE% no Windows e para o home do
+# usuario no macOS/Linux, entao os mesmos caminhos servem para todos os SOs.
 HOME = Path(os.path.expanduser("~"))
 
 CLAUDE_CREDENTIALS_PATH = HOME / ".claude" / ".credentials.json"
 CODEX_AUTH_PATH = HOME / ".codex" / "auth.json"
+
+# No macOS o CLI do Claude costuma guardar o token OAuth no Keychain (e nao no
+# arquivo acima). Este e o nome do servico usado para o fallback read-only via
+# `security find-generic-password` (ver core/credentials.py).
+CLAUDE_KEYCHAIN_SERVICE = "Claude Code-credentials"
 
 # --- Endpoints de uso (NAO DOCUMENTADOS) ---------------------------------
 # Podem mudar sem aviso; o parser e tolerante por isso (ver providers/).

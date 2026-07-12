@@ -6,18 +6,21 @@ Objetivo Macro:
     nunca escrever, nunca logar o token e nunca lancar excecao para a UI.
 
 Fluxo Logico:
-    1. Origem: arquivos JSON em %USERPROFILE%\\.claude e %USERPROFILE%\\.codex.
+    1. Origem: arquivos JSON em ~/.claude e ~/.codex. No macOS, se o arquivo do
+       Claude nao existir, ha fallback read-only para o Keychain do sistema.
     2. Transformacao: parsing defensivo -> AuthResult com AuthState.
     3. Destino: providers usam o token (em memoria) para a chamada de uso.
 
 Regras de seguranca:
-    - Apenas leitura. Nenhuma escrita nestes arquivos.
+    - Apenas leitura. Nenhuma escrita nos arquivos nem no Keychain.
     - O conteudo do token NUNCA e logado nem colocado em mensagens de erro.
 """
 
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -79,24 +82,13 @@ def _load_json(path: Path) -> Optional[Any]:
     return json.loads(text)
 
 
-def read_claude_credentials(
-    path: Path = config.CLAUDE_CREDENTIALS_PATH,
-) -> AuthResult:
-    """Le %USERPROFILE%\\.claude\\.credentials.json.
+def _build_claude_result(data: dict) -> AuthResult:
+    """Converte o payload (do arquivo ou do Keychain) em AuthResult.
 
     Schema tolerante: o token pode estar na raiz (`access_token`) ou aninhado
     em `claudeAiOauth` (formato usado por versoes recentes do CLI).
     """
     provider = config.PROVIDER_CLAUDE
-    try:
-        data = _load_json(path)
-    except (ValueError, OSError):
-        return AuthResult(provider, AuthState.INVALID_FILE)
-
-    if data is None:
-        return AuthResult(provider, AuthState.MISSING)
-    if not isinstance(data, dict):
-        return AuthResult(provider, AuthState.INVALID_FILE)
 
     # O bloco OAuth pode estar aninhado.
     oauth = data.get("claudeAiOauth")
@@ -115,10 +107,70 @@ def read_claude_credentials(
     return AuthResult(provider, AuthState.READY, token=token, expires_at=expires_at)
 
 
+def _load_claude_keychain(
+    service: str = config.CLAUDE_KEYCHAIN_SERVICE,
+) -> Optional[dict]:
+    """Fallback READ-ONLY do macOS: le o token do Claude no Keychain.
+
+    Retorna o dict de credenciais ou None (fora do macOS, se nao encontrar, ou
+    em qualquer falha). Usa `security find-generic-password -w`, que apenas le -
+    nunca escreve. O conteudo NUNCA e logado nem propagado em excecao.
+    """
+    if sys.platform != "darwin":
+        return None
+    try:
+        proc = subprocess.run(
+            ["security", "find-generic-password", "-s", service, "-w"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+    if proc.returncode != 0:
+        return None
+
+    raw = (proc.stdout or "").strip()
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+    except (ValueError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def read_claude_credentials(
+    path: Path = config.CLAUDE_CREDENTIALS_PATH,
+) -> AuthResult:
+    """Le ~/.claude/.credentials.json e, no macOS, cai para o Keychain se o
+    arquivo nao existir.
+
+    Ordem: arquivo primeiro (comportamento identico no Windows/Linux); se o
+    arquivo estiver ausente, tenta o Keychain do macOS (`_load_claude_keychain`).
+    """
+    provider = config.PROVIDER_CLAUDE
+    try:
+        data = _load_json(path)
+    except (ValueError, OSError):
+        return AuthResult(provider, AuthState.INVALID_FILE)
+
+    if data is None:
+        # Arquivo ausente: no macOS o token pode estar no Keychain.
+        data = _load_claude_keychain()
+        if data is None:
+            return AuthResult(provider, AuthState.MISSING)
+    if not isinstance(data, dict):
+        return AuthResult(provider, AuthState.INVALID_FILE)
+
+    return _build_claude_result(data)
+
+
 def read_codex_credentials(
     path: Path = config.CODEX_AUTH_PATH,
 ) -> AuthResult:
-    """Le %USERPROFILE%\\.codex\\auth.json.
+    """Le ~/.codex/auth.json (mesmo caminho em Windows/macOS/Linux).
 
     Schema tolerante: o token OAuth costuma estar em `tokens.access_token`, mas
     pode aparecer como `access_token`/`accessToken`/`token` na raiz conforme a

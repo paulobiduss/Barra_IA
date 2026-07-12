@@ -7,7 +7,8 @@ de privilégio possível**:
 
 - **Somente leitura.** O app apenas **lê** os tokens OAuth já gravados pelos CLIs
   oficiais (`claude login` / `codex login`). Ele **nunca escreve, renova ou apaga**
-  esses arquivos.
+  esses arquivos. No macOS, quando o token do Claude está no Keychain, a leitura
+  usa `security find-generic-password` — que **apenas lê**, nunca grava.
 - **Tokens ficam só em memória.** O conteúdo do token é usado apenas para a
   chamada HTTP de consulta de uso e **nunca é logado, persistido em disco, nem
   incluído em mensagens de erro/UI**.
@@ -21,13 +22,14 @@ de privilégio possível**:
 
 ## De onde vêm as credenciais
 
-| Provider | Arquivo lido (read-only)                          |
-|----------|---------------------------------------------------|
-| Claude   | `%USERPROFILE%\.claude\.credentials.json`         |
-| Codex    | `%USERPROFILE%\.codex\auth.json`                  |
+| Provider | Origem lida (read-only)                                            |
+|----------|--------------------------------------------------------------------|
+| Claude   | `~/.claude/.credentials.json` — no macOS, se ausente, cai para o Keychain (serviço `Claude Code-credentials`) |
+| Codex    | `~/.codex/auth.json`                                               |
 
-Esses arquivos são gerados e mantidos pelos próprios CLIs. Este app não os cria
-nem os modifica.
+No Windows, `~` corresponde a `%USERPROFILE%`; no macOS/Linux, ao home do
+usuário. Essas origens são geradas e mantidas pelos próprios CLIs. Este app não
+as cria nem as modifica.
 
 ## Endpoints consultados
 
