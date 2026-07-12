@@ -15,6 +15,20 @@
 
 ---
 
+## ⬇️ Download (releases)
+
+Baixe a versão pronta para o seu sistema na página de
+[**Releases**](https://github.com/paulobiduss/Barra_IA/releases):
+
+- **Windows** — `BarraUsoIA-windows.zip` (extraia e rode `BarraUsoIA.exe`).
+- **macOS** — `BarraUsoIA-macos.zip` (extraia e mova `BarraUsoIA.app` para *Aplicativos*).
+
+Os binários são gerados automaticamente por GitHub Actions a cada tag de versão
+(um build nativo em cada SO). Para compilar você mesmo, veja
+[Build do app](#-build-do-app).
+
+---
+
 ## ✨ O que faz
 
 A Barra de Uso de IA vive discretamente na bandeja do Windows e responde a uma

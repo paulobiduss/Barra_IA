@@ -1,0 +1,87 @@
+name: Release
+
+# Cria uma release com os binarios de Windows (.exe) e macOS (.app) quando uma
+# tag de versao (ex.: v1.0.0) e enviada. Os artefatos sao compilados nos
+# proprios runners de cada SO, porque PyInstaller nao faz cross-compile.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: python -m pip install -r requirements.txt
+
+      - name: Build (.exe) com PyInstaller
+        run: |
+          python -m PyInstaller -y --clean --onedir --windowed `
+            --name BarraUsoIA `
+            --icon assets/icon.png `
+            --add-data "assets;assets" `
+            --hidden-import PyQt6.QtCore `
+            --hidden-import PyQt6.QtGui `
+            --hidden-import PyQt6.QtWidgets `
+            --hidden-import PyQt6.sip `
+            main.py
+
+      - name: Empacotar .zip portatil
+        run: Compress-Archive -Path dist/BarraUsoIA -DestinationPath dist/BarraUsoIA-windows.zip -Force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BarraUsoIA-windows
+          path: dist/BarraUsoIA-windows.zip
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: python -m pip install -r requirements.txt
+
+      - name: Build (.app) com build.sh
+        run: bash build.sh
+
+      - name: Empacotar .app em .zip
+        run: ditto -c -k --keepParent dist/BarraUsoIA.app dist/BarraUsoIA-macos.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BarraUsoIA-macos
+          path: dist/BarraUsoIA-macos.zip
+
+  publish-release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    # Publica a release apenas quando disparado por uma tag.
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Criar release com os binarios
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/BarraUsoIA-windows/BarraUsoIA-windows.zip
+            artifacts/BarraUsoIA-macos/BarraUsoIA-macos.zip
+          generate_release_notes: true
