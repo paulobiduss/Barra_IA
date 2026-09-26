@@ -3,11 +3,18 @@ name: Release
 # Cria uma release com os binarios de Windows (.exe) e macOS (.app) quando uma
 # tag de versao (ex.: v1.0.0) e enviada. Os artefatos sao compilados nos
 # proprios runners de cada SO, porque PyInstaller nao faz cross-compile.
+# Tambem pode ser disparado manualmente (aba Actions) informando a versao: a
+# action cria a tag no commit do run, sem precisar de `git push` da tag.
 on:
   push:
     tags:
       - "v*"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag da release a criar (ex.: v1.1.0). Vazio = so compila."
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -73,8 +80,8 @@ jobs:
   publish-release:
     needs: [build-windows, build-macos]
     runs-on: ubuntu-latest
-    # Publica a release apenas quando disparado por uma tag.
-    if: startsWith(github.ref, 'refs/tags/')
+    # Publica quando disparado por uma tag ou manualmente com `tag` informado.
+    if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -83,6 +90,8 @@ jobs:
       - name: Criar release com os binarios
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          target_commitish: ${{ github.sha }}
           files: |
             artifacts/BarraUsoIA-windows/BarraUsoIA-windows.zip
             artifacts/BarraUsoIA-macos/BarraUsoIA-macos.zip
