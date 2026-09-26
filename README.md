@@ -97,7 +97,7 @@ sem sair do fluxo de trabalho.
    e no menu da bandeja. Em falha temporária, reaproveita o último valor válido
    (cache) com uma nota.
 
-Se um token estiver **ausente ou expirado**, a UI orienta a rodar `claude login`
+Se um token estiver **ausente ou expirado**, a UI orienta a rodar `claude auth login`
 ou `codex login`.
 
 ### 🔑 Login automático do Claude

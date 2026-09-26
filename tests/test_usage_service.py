@@ -32,7 +32,7 @@ class CollectUsageTests(unittest.TestCase):
         auth = AuthResult("Claude", AuthState.MISSING)
         snap = collect_usage(auth, _FakeProvider("Claude", raises=True))
         self.assertEqual(snap.state, UsageState.AUTH_ERROR)
-        self.assertIn("claude login", snap.message)
+        self.assertIn("claude auth login", snap.message)
 
     def test_expired_becomes_auth_error(self):
         auth = AuthResult("Codex", AuthState.EXPIRED)

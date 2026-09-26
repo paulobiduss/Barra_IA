@@ -6,7 +6,7 @@ A **Barra de Uso de IA** foi desenhada para tocar em credenciais com o **mínimo
 de privilégio possível**:
 
 - **Somente leitura.** O app apenas **lê** os tokens OAuth já gravados pelos CLIs
-  oficiais (`claude login` / `codex login`). Ele **nunca escreve, renova ou apaga**
+  oficiais (`claude auth login` / `codex login`). Ele **nunca escreve, renova ou apaga**
   esses arquivos. No macOS, quando o token do Claude está no Keychain, a leitura
   usa `security find-generic-password` — que **apenas lê**, nunca grava.
 - **Login delegado ao CLI oficial.** Quando a sessão do Claude cai, o app abre um

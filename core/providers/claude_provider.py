@@ -83,7 +83,7 @@ class ClaudeUsageProvider:
 
 def _message_for(state: UsageState) -> str:
     if state is UsageState.AUTH_ERROR:
-        return "token rejeitado - rode 'claude login'"
+        return "token rejeitado - rode 'claude auth login'"
     if state is UsageState.NETWORK_ERROR:
         return "sem conexao"
     return "formato de resposta inesperado"

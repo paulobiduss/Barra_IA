@@ -60,7 +60,9 @@ fi
 # PyInstaller no macOS espera um .icns. Se nao existir, geramos a partir do
 # icon.png com as ferramentas nativas (sips + iconutil).
 ICON_ICNS="assets/icon.icns"
-if [[ ! -f "$ICON_ICNS" ]]; then
+# Regenera tambem quando o icon.png e mais novo: o .icns e ignorado pelo git,
+# entao um build antigo deixaria o icone desatualizado apos um `git pull`.
+if [[ ! -f "$ICON_ICNS" || "assets/icon.png" -nt "$ICON_ICNS" ]]; then
   echo "[icone] Gerando $ICON_ICNS a partir de assets/icon.png..."
   ICONSET="$(mktemp -d)/icon.iconset"
   mkdir -p "$ICONSET"

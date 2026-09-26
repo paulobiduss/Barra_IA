@@ -20,7 +20,7 @@ UsageJob = tuple[Callable[[], AuthResult], UsageProvider]
 
 
 def _auth_message(state: AuthState, provider: str) -> str:
-    login = "claude login" if provider.lower().startswith("claude") else "codex login"
+    login = "claude auth login" if provider.lower().startswith("claude") else "codex login"
     if state is AuthState.MISSING:
         return f"credenciais ausentes - rode '{login}'"
     if state is AuthState.INVALID_FILE:
