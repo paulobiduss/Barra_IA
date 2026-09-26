@@ -23,6 +23,10 @@ Baixe a versão pronta para o seu sistema na página de
 - **Windows** — `BarraUsoIA-windows.zip` (extraia e rode `BarraUsoIA.exe`).
 - **macOS** — `BarraUsoIA-macos.zip` (extraia e mova `BarraUsoIA.app` para *Aplicativos*).
 
+  O app não é assinado com certificado da Apple. Na primeira abertura, se o
+  macOS disser que ele "não pode ser verificado" ou está "danificado", rode:
+  `xattr -cr /Applications/BarraUsoIA.app` e abra de novo.
+
 Os binários são gerados automaticamente por GitHub Actions a cada tag de versão
 (um build nativo em cada SO). Para compilar você mesmo, veja
 [Build do app](#-build-do-app).
