@@ -110,6 +110,13 @@ PLIST="$APP_PATH/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" "$PLIST" 2>/dev/null \
   || /usr/libexec/PlistBuddy -c "Set :LSUIElement true" "$PLIST"
 
+# O PyInstaller assina o .app (ad-hoc) e o Info.plist faz parte do selo: editar
+# a chave acima invalida a assinatura, e o macOS passa a dizer que o app esta
+# "danificado". Reassinamos (ad-hoc) e validamos antes de seguir.
+echo "Reassinando o app (ad-hoc) apos editar o Info.plist..."
+codesign --force --deep --sign - "$APP_PATH"
+codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+
 echo
 echo "Build concluido com sucesso."
 echo
