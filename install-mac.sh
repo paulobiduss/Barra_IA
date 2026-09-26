@@ -70,6 +70,13 @@ fi
 echo
 echo "[3/3] Instalando em /Applications..."
 DEST="/Applications/${APP_NAME}.app"
+# Fecha a versao em execucao para a nova substituir o binario de fato.
+if pgrep -xq "$APP_NAME"; then
+  echo "Fechando a versao em execucao..."
+  osascript -e "quit app \"$APP_NAME\"" >/dev/null 2>&1 || true
+  sleep 2
+  pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+fi
 if [[ -d "$DEST" ]]; then
   echo "Aviso: $DEST ja existe e sera substituido."
   rm -rf "$DEST"
@@ -78,15 +85,17 @@ cp -R "$APP_PATH" /Applications/
 
 deactivate || true
 
+open -a "$DEST" || true
+
 echo
 echo "============================================================"
 echo " Instalacao concluida!"
 echo "============================================================"
 echo "App instalado em: $DEST"
-echo "Para abrir agora:  open -a \"$APP_NAME\""
+echo "O app ja foi aberto. Para reabrir:  open -a \"$APP_NAME\""
 echo "O icone aparece na barra de menu (sem icone no Dock)."
 echo
 echo "Requer que 'claude' e/ou 'codex' estejam autenticados"
-echo "(claude login / codex login). No macOS o token do Claude"
+echo "(claude auth login / codex login). No macOS o token do Claude"
 echo "e lido do Keychain automaticamente quando nao ha arquivo."
 echo

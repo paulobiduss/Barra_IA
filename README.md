@@ -40,6 +40,9 @@ sem sair do fluxo de trabalho.
   (verde → amarelo → laranja → vermelho).
 - 🕒 **Tempo até o reset** da janela de cota (ex.: *reset em 25min*).
 - 🔄 **Atualização automática** a cada 10 minutos + botão **Atualizar agora**.
+- 🔑 **Login automático no Claude**: se a sessão cair (token ausente, expirado ou
+  rejeitado), o app abre sozinho um terminal com `claude auth login` — é só
+  confirmar no navegador. Também há o item **Entrar no Claude** no menu.
 - 🪶 **Leve e silencioso**: roda no loop de eventos do Qt, sem janela principal.
 - 🔒 **Seguro por design**: leitura *read-only* dos tokens; nada é logado ou enviado
   a terceiros (ver [SECURITY.md](SECURITY.md)).
@@ -94,8 +97,26 @@ sem sair do fluxo de trabalho.
    e no menu da bandeja. Em falha temporária, reaproveita o último valor válido
    (cache) com uma nota.
 
-Se um token estiver **ausente ou expirado**, a UI orienta a rodar `claude login`
+Se um token estiver **ausente ou expirado**, a UI orienta a rodar `claude auth login`
 ou `codex login`.
+
+### 🔑 Login automático do Claude
+
+Quando a consulta do Claude falha por autenticação (credencial ausente, expirada,
+inválida ou HTTP 401/403), o app abre **uma vez por queda de sessão** um terminal
+rodando o login oficial do CLI ([`claude auth login`](https://code.claude.com/docs/en/cli)).
+O CLI abre o navegador para o OAuth e grava as credenciais; ~90 s depois o app
+consulta o uso de novo. O gatilho só é rearmado quando o Claude volta a responder
+OK, então o terminal não reabre a cada refresh.
+
+| SO      | Como o terminal é aberto                                   |
+|---------|------------------------------------------------------------|
+| Windows | nova janela `cmd /k claude auth login`                     |
+| macOS   | Terminal.app via `osascript` (o macOS pede permissão de *Automação* na 1ª vez) |
+| Linux   | `x-terminal-emulator -e claude auth login` (ou o CLI direto) |
+
+Requer o CLI `claude` no `PATH`; se não estiver, o app mostra um aviso. Para
+desligar, defina `CLAUDE_AUTO_LOGIN_ENABLED = False` em `core/config.py`.
 
 ---
 
@@ -166,6 +187,8 @@ na barra de menu.
 ## 🔒 Segurança & privacidade
 
 - **Read-only:** o app nunca escreve, renova ou apaga os arquivos de credencial.
+  O login automático apenas **abre** o CLI oficial (`claude auth login`), que é
+  quem grava a nova credencial.
 - **Tokens só em memória:** nunca logados, nunca persistidos, nunca em mensagens
   de erro.
 - **Sem segredos no repositório:** não há `.env` nem chaves versionadas; o

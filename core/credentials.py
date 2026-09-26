@@ -2,7 +2,7 @@
 credentials.py - Leitura READ-ONLY das credenciais OAuth locais.
 
 Objetivo Macro:
-    Ler os tokens gravados pelos CLIs (`claude login` / `codex login`) sem
+    Ler os tokens gravados pelos CLIs (`claude auth login` / `codex login`) sem
     nunca escrever, nunca logar o token e nunca lancar excecao para a UI.
 
 Fluxo Logico:
