@@ -3,7 +3,9 @@ tray.py - Icone na bandeja: tooltip de uso + menu de contexto.
 
 Objetivo Macro:
     Manter o uso de Claude/Codex visivel na bandeja, atualizando tooltip e
-    itens de status, com acoes 'Atualizar agora' e 'Sair'.
+    itens de status, com acoes 'Atualizar agora', 'Entrar no Claude' e 'Sair'.
+    Quando a sessao do Claude cai, abre o login oficial automaticamente
+    (core/claude_login.py).
 
 Fluxo Logico:
     1. Origem: RefreshScheduler dispara coleta de uso (credentials -> provider).
@@ -16,11 +18,12 @@ temporarias.
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QThreadPool
+from PyQt6.QtCore import QThreadPool, QTimer
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QWidgetAction
 
 from core import config
+from core.claude_login import ClaudeAutoLogin, LoginAttempt
 from core.credentials import read_claude_credentials, read_codex_credentials
 from core.models import UsageSnapshot, UsageState
 from core.providers.claude_provider import ClaudeUsageProvider
@@ -32,8 +35,15 @@ from ui.usage_menu_item import UsageMenuItemWidget
 
 
 class SystemTray(QSystemTrayIcon):
-    def __init__(self, icon: QIcon, parent=None):
+    def __init__(
+        self,
+        icon: QIcon,
+        parent=None,
+        auto_login: ClaudeAutoLogin | None = None,
+    ):
         super().__init__(icon, parent)
+
+        self._auto_login = auto_login or ClaudeAutoLogin()
 
         self._claude_provider = ClaudeUsageProvider()
         self._codex_provider = CodexUsageProvider()
@@ -80,6 +90,9 @@ class SystemTray(QSystemTrayIcon):
         self._action_refresh = QAction("Atualizar agora", menu)
         self._action_refresh.triggered.connect(self._on_manual_refresh)
 
+        self._action_login = QAction("Entrar no Claude", menu)
+        self._action_login.triggered.connect(self._on_manual_login)
+
         self._action_quit = QAction("Sair", menu)
         self._action_quit.triggered.connect(QApplication.quit)
 
@@ -87,6 +100,7 @@ class SystemTray(QSystemTrayIcon):
         menu.addAction(self._action_codex)
         menu.addSeparator()
         menu.addAction(self._action_refresh)
+        menu.addAction(self._action_login)
         menu.addSeparator()
         menu.addAction(self._action_quit)
 
@@ -97,6 +111,33 @@ class SystemTray(QSystemTrayIcon):
         executed = self._scheduler.request_manual_refresh()
         if not executed:
             self.setToolTip(self.toolTip() + "\n(aguarde para atualizar de novo)")
+
+    def _on_manual_login(self) -> None:
+        self._report_login_attempt(self._auto_login.open_login())
+
+    def _handle_claude_session(self, raw_claude: UsageSnapshot | None) -> None:
+        """Recebe o snapshot BRUTO (antes do cache, que mascara AUTH_ERROR)."""
+        self._report_login_attempt(self._auto_login.on_claude_snapshot(raw_claude))
+
+    def _report_login_attempt(self, attempt: LoginAttempt) -> None:
+        if attempt is LoginAttempt.TRIGGERED:
+            self.showMessage(
+                "Barra de Uso de IA",
+                "Sessao do Claude encerrada - abrindo o login no terminal.",
+            )
+            QTimer.singleShot(config.POST_LOGIN_REFRESH_DELAY_MS, self.refresh_now_silent)
+        elif attempt is LoginAttempt.CLI_MISSING:
+            self.showMessage(
+                "Barra de Uso de IA",
+                "CLI 'claude' nao encontrado no PATH - instale o Claude Code para entrar.",
+                QSystemTrayIcon.MessageIcon.Warning,
+            )
+        elif attempt is LoginAttempt.FAILED:
+            self.showMessage(
+                "Barra de Uso de IA",
+                "Nao foi possivel abrir o terminal - rode 'claude auth login'.",
+                QSystemTrayIcon.MessageIcon.Warning,
+            )
 
     def refresh_now_silent(self) -> None:
         """Dispara a coleta em background. Retorna imediatamente; a UI e
@@ -116,6 +157,11 @@ class SystemTray(QSystemTrayIcon):
         """Roda no thread da UI (sinal queued). Aplica cache e atualiza textos."""
         self._busy = False
         self._active_task = None
+
+        raw_claude = next(
+            (s for s in snapshots if s.provider == config.PROVIDER_CLAUDE), None
+        )
+        self._handle_claude_session(raw_claude)
 
         by_provider = {s.provider: self._with_cache(s) for s in snapshots}
         ordered = list(by_provider.values())

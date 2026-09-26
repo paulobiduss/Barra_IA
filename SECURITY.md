@@ -9,6 +9,10 @@ de privilégio possível**:
   oficiais (`claude login` / `codex login`). Ele **nunca escreve, renova ou apaga**
   esses arquivos. No macOS, quando o token do Claude está no Keychain, a leitura
   usa `security find-generic-password` — que **apenas lê**, nunca grava.
+- **Login delegado ao CLI oficial.** Quando a sessão do Claude cai, o app abre um
+  terminal com o comando fixo `claude auth login` (sem `shell=True` e sem entrada
+  do usuário no comando). Quem autentica e grava o token é o próprio CLI; o app
+  não vê a senha nem o fluxo OAuth.
 - **Tokens ficam só em memória.** O conteúdo do token é usado apenas para a
   chamada HTTP de consulta de uso e **nunca é logado, persistido em disco, nem
   incluído em mensagens de erro/UI**.

@@ -37,6 +37,14 @@ REFRESH_INTERVAL_MS = 10 * 60 * 1000
 # Debounce do "Atualizar agora" para evitar spam de cliques (ms).
 MANUAL_REFRESH_DEBOUNCE_MS = 3 * 1000
 
+# --- Login automatico do Claude -------------------------------------------
+# Quando a sessao do Claude cai (token ausente/expirado/rejeitado), o app abre
+# um terminal com o login oficial do CLI (https://code.claude.com/docs/en/cli).
+CLAUDE_AUTO_LOGIN_ENABLED = True
+CLAUDE_LOGIN_COMMAND: tuple[str, ...] = ("claude", "auth", "login")
+# Apos abrir o login, re-consulta o uso para refletir a nova sessao (ms).
+POST_LOGIN_REFRESH_DELAY_MS = 90 * 1000
+
 # --- Identificadores de provider -----------------------------------------
 PROVIDER_CLAUDE = "Claude"
 PROVIDER_CODEX = "Codex"
