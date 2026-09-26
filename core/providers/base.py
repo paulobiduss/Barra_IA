@@ -2,14 +2,16 @@
 base.py - Contrato comum dos providers de uso + helpers HTTP/parse.
 
 Cada provider implementa `fetch(token) -> UsageSnapshot`. A parte de rede
-(urllib, stdlib - sem dependencia nova) e o parsing defensivo ficam aqui para
-nao duplicar entre Claude e Codex.
+(urllib) e o parsing defensivo ficam aqui para nao duplicar entre Claude e
+Codex. A unica dependencia extra e o `certifi` (bundle de CAs), ver
+`default_ssl_context`.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import ssl
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -30,12 +32,29 @@ class UsageProvider(Protocol):
         ...
 
 
+def default_ssl_context() -> ssl.SSLContext:
+    """Contexto TLS que valida com o bundle de CAs do `certifi`.
+
+    O .app/.exe do PyInstaller herda o caminho de certificados do Python da
+    maquina de build (ex.: runner do GitHub Actions), que nao existe no
+    computador do usuario: sem isso toda chamada HTTPS falha com
+    CERTIFICATE_VERIFY_FAILED e a UI mostra "sem conexao" (bug da v1.1.1).
+    Ex.: urllib.request.urlopen(req, context=default_ssl_context())
+    """
+    try:
+        import certifi
+    except ImportError:
+        return ssl.create_default_context()
+    return ssl.create_default_context(cafile=certifi.where())
+
+
 def http_get_json(
     url: str,
     token: str,
     *,
     timeout: int = config.HTTP_TIMEOUT_SECONDS,
     extra_headers: Optional[dict[str, str]] = None,
+    ssl_context: Optional[ssl.SSLContext] = None,
 ) -> tuple[Optional[dict], Optional[UsageState]]:
     """Faz GET autenticado e devolve (payload, None) em sucesso ou
     (None, UsageState) classificando a falha.
@@ -52,7 +71,8 @@ def http_get_json(
 
     request = urllib.request.Request(url, headers=headers, method="GET")
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        context = ssl_context or default_ssl_context()
+        with urllib.request.urlopen(request, timeout=timeout, context=context) as response:
             raw = response.read().decode("utf-8")
         data = json.loads(raw)
         if not isinstance(data, dict):
@@ -65,7 +85,13 @@ def http_get_json(
             return None, UsageState.AUTH_ERROR
         return None, UsageState.NETWORK_ERROR
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        logger.warning("Erro de rede ao consultar %s: %s", url, type(exc).__name__)
+        # `reason` distingue falha de certificado (SSLCertVerificationError)
+        # de DNS/timeout no log, sem expor dados sensiveis.
+        reason = getattr(exc, "reason", exc)
+        logger.warning(
+            "Erro de rede ao consultar %s: %s (%s)",
+            url, type(exc).__name__, type(reason).__name__,
+        )
         return None, UsageState.NETWORK_ERROR
     except json.JSONDecodeError:
         logger.warning("JSON invalido na resposta de %s", url)
